@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standard E-Commerce Store</title>
+    <style>
+        /* General styles */
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 0;
+        }
+
+        .header {
+            background-color: #333;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .products {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 20px;
+        }
+
+        .product {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 200px;
+        }
+
+        .product img {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .cart {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            width: 250px;
+            display: none;
+        }
+
+        .cart h2 {
+            margin-top: 0;
+        }
+
+        .cart ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .cart ul li {
+            margin: 10px 0;
+        }
+
+        .cart button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .cart button:hover {
+            background-color: #218838;
+        }
+
+        .product button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .product button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Input styles */
+        input[type="email"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>Welcome to Our Store</h1>
+    </div>
+
+    <div class="products">
+        <!-- Product items will be injected here by JavaScript -->
+    </div>
+
+    <div class="cart" id="cart">
+        <h2>Your Cart</h2>
+        <ul id="cart-items"></ul>
+        <p>Total: ₦<span id="total-price">0</span></p>
+        <input type="email" id="customer-email" placeholder="Enter your email" required>
+        <button id="checkout-button">Checkout</button>
+    </div>
+
+    <script src="https://js.paystack.co/v1/inline.js"></script> <!-- Paystack inline script -->
+
+    <script>
+        // Sample products data
+        const products = [
+            { id: 1, name: 'Sunglass', price: 50000, image: 'sunglass.jpg' },
+            { id: 2, name: 'Headphone', price: 4000, image: 'headphone.jpg' },
+            { id: 3, name: 'Bra', price: 13000, image: 'bra.jpg' }
+        ];
+
+        let cart = [];
+        let total = 0;
+
+        // Display products on the page
+        function displayProducts() {
+            const productContainer = document.querySelector('.products');
+            products.forEach(product => {
+                const productDiv = document.createElement('div');
+                productDiv.classList.add('product');
+                productDiv.innerHTML = `
+                    <img src="${product.image}" alt="${product.name}">
+                    <h3>${product.name}</h3>
+                    <p>₦${product.price}</p>
+                    <button onclick="addToCart(${product.id}, '${product.name}', ${product.price})">Add to Cart</button>
+                `;
+                productContainer.appendChild(productDiv);
+            });
+        }
+
+        // Add product to cart
+        function addToCart(productId, productName, productPrice) {
+            cart.push({ id: productId, name: productName, price: productPrice });
+            total += productPrice;
+            updateCart();
+        }
+
+        // Update cart UI
+        function updateCart() {
+            const cartItemsList = document.getElementById('cart-items');
+            cartItemsList.innerHTML = '';
+            cart.forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = `${item.name} - ₦${item.price}`;
+                cartItemsList.appendChild(li);
+            });
+
+            document.getElementById('total-price').textContent = total;
+            document.getElementById('cart').style.display = cart.length > 0 ? 'block' : 'none';
+        }
+
+        // Handle checkout process
+        function checkout() {
+            const email = document.getElementById('customer-email').value;
+            if (!email) {
+                alert('Please enter your email!');
+                document.getElementById('customer-email').focus();
+                return;
+            }
+            if (cart.length === 0) {
+                alert('Your cart is empty!');
+                return;
+            }
+
+            const handler = PaystackPop.setup({
+                key: 'pk_test_13679ac81d15c27422f43890078ec78da774f2d1',  // Paystack public test key
+                email: email,  // Customer's email
+                amount: total * 100,  // Amount in kobo (₦1 = 100 kobo)
+                currency: 'NGN',
+                ref: 'txn_' + Math.floor(Math.random() * 1000000),
+                callback: function (response) {
+                    // Send payment reference to backend for verification
+                    fetch('https://commerce-backend-green.vercel.app/api/verify-payment', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ reference: response.reference }),
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        alert('Payment was successful: ' + data.message);
+                        cart = [];
+                        total = 0;
+                        updateCart();  // Update cart after checkout
+                    })
+                    .catch(error => {
+                        console.error('Payment verification failed:', error);
+                        alert('Payment verification failed');
+                    });
+                },
+                onClose: function () {
+                    alert('Payment process was closed.');
+                }
+            });
+            handler.openIframe();
+        }
+
+        // Initialize product display
+        displayProducts();
+    </script>
+</body>
+</html>
+  
