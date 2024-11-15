@@ -1,0 +1,13 @@
+{
+  "name": "commerce-backend",
+  "version": "1.0.0",
+  "description": "Backend for e-commerce with Paystack payment verification",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^0.27.2",
+    "dotenv": "^10.0.0"
+  }
+}
